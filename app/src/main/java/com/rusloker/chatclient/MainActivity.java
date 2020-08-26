@@ -3,9 +3,12 @@ package com.rusloker.chatclient;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.Button;
 import android.widget.TabHost;
 import android.widget.Toast;
 
@@ -16,14 +19,15 @@ public class MainActivity extends AppCompatActivity {
     ServerSocket serverSocket;
     int localPort;
     NsdManager.RegistrationListener registrationListener;
-    String serviceName;
-    NsdManager nsdManager;
+    private NsdManager nsdManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         findViewById(R.id.create).setOnClickListener(v -> {
+            ((Button)findViewById(R.id.create)).setActivated(false);
+            ((Button)findViewById(R.id.discover)).setActivated(false);
             initializeRegistrationListener();
             try {
                 initializeServerSocket();
@@ -32,7 +36,9 @@ public class MainActivity extends AppCompatActivity {
             }
             registerService(localPort);
         });
-
+        findViewById(R.id.discover).setOnClickListener(v -> {
+            startActivity(new Intent(MainActivity.this, DiscoverServices.class));
+        });
     }
 
     public void registerService(int port) {
@@ -42,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
         // The name is subject to change based on conflicts
         // with other services advertised on the same network.
         serviceInfo.setServiceName("NsdChat");
-        serviceInfo.setServiceType("_nsdchat._tcp");
+        serviceInfo.setServiceType(ChatService.SERVICE_TYPE);
         serviceInfo.setPort(port);
 
         nsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
@@ -68,9 +74,9 @@ public class MainActivity extends AppCompatActivity {
                 // Save the service name. Android may have changed it in order to
                 // resolve a conflict, so update the name you initially requested
                 // with the name Android actually used.
-                serviceName = NsdServiceInfo.getServiceName();
+                ChatService.serviceName = NsdServiceInfo.getServiceName();
                 Toast.makeText(MainActivity.this,
-                        "Registered successfully " + serviceName,
+                        "Registered successfully " + ChatService.serviceName,
                         Toast.LENGTH_SHORT).show();
             }
 
@@ -94,8 +100,5 @@ public class MainActivity extends AppCompatActivity {
             }
         };
     }
-
-
-
 
 }
