@@ -4,12 +4,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.os.Bundle;
 import android.util.Log;
 
-import java.net.InetAddress;
+import com.rusloker.chatclient.server.ChatServer;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,7 +72,14 @@ public class DiscoverServices extends AppCompatActivity {
                     // connecting to. It could be "Bob's Chat App".
                     Log.d(TAG, "Same machine: " + ChatService.serviceName);
                 }
-
+                for (int i = 0; i < services.size(); i++) {
+                    NsdServiceInfo cur = services.get(i);
+                    if (cur.getServiceName().equals(service.getServiceName())
+                            && cur.getServiceType().equals(service.getServiceType())){
+                        services.remove(i);
+                        i--;
+                    }
+                }
                 services.add(service);
                 runOnUiThread(() -> {
                     serviceAdapter.notifyDataSetChanged();
@@ -132,8 +141,12 @@ public class DiscoverServices extends AppCompatActivity {
                     return;
                 }
                 mService = serviceInfo;
-                int port = mService.getPort();
-                InetAddress host = mService.getHost();
+                ChatService.port = mService.getPort();
+                ChatService.host = mService.getHost();
+                runOnUiThread(() -> {
+                    startActivity(new Intent(DiscoverServices.this, ChatActivity.class));
+                    DiscoverServices.this.finish();
+                });
             }
         };
     }

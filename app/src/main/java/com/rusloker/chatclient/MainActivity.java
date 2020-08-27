@@ -7,10 +7,10 @@ import android.content.Intent;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
-import android.widget.TabHost;
 import android.widget.Toast;
+
+import com.rusloker.chatclient.server.ChatServer;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -26,8 +26,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         findViewById(R.id.create).setOnClickListener(v -> {
-            ((Button)findViewById(R.id.create)).setActivated(false);
-            ((Button)findViewById(R.id.discover)).setActivated(false);
+            ((Button)findViewById(R.id.create)).setEnabled(false);
+            ((Button)findViewById(R.id.discover)).setEnabled(false);
             initializeRegistrationListener();
             try {
                 initializeServerSocket();
@@ -78,6 +78,12 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this,
                         "Registered successfully " + ChatService.serviceName,
                         Toast.LENGTH_SHORT).show();
+                runOnUiThread(() -> {
+                    new ChatServer(serverSocket).start();
+                    ChatService.host = serverSocket.getInetAddress();
+                    ChatService.port = serverSocket.getLocalPort();
+                    startActivity(new Intent(MainActivity.this, ChatActivity.class));
+                });
             }
 
             @Override
