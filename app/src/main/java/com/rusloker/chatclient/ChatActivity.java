@@ -1,10 +1,14 @@
 package com.rusloker.chatclient;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -14,17 +18,22 @@ import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Stack;
 
 public class ChatActivity extends AppCompatActivity {
     private Socket clientSocket; //сокет для общения
     private BufferedReader in; // поток чтения из сокета
     private BufferedWriter out; // поток записи в сокет
-    List<String> messages = new LinkedList<>();
+    public static List<Message> messages = new LinkedList<>();
+    Gson gson = new GsonBuilder().create();
+    MessageAdapter messageAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
+        messageAdapter = new MessageAdapter();
+        ((RecyclerView)findViewById(R.id.messageRecyclerView)).setAdapter(messageAdapter);
         try {
             Thread creating = new Thread() {
                 @Override
@@ -49,8 +58,14 @@ public class ChatActivity extends AppCompatActivity {
                 public void run() {
                     while (!clientSocket.isClosed() && clientSocket.isConnected()) {
                         try {
-                            String serverWord = in.readLine();
-                            Log.i("Client", serverWord);
+                            String stringMessage = in.readLine();
+                            Log.i("Client", stringMessage);
+                            Message message = gson.fromJson(stringMessage, Message.class);
+                            messages.add(message);
+                            runOnUiThread(() -> {
+                                messageAdapter.notifyDataSetChanged();
+                                ((RecyclerView)findViewById(R.id.messageRecyclerView)).scrollToPosition(messages.size()-1);
+                            });
                         } catch (IOException e) {
                             Log.e("Client", e.toString());
                         }

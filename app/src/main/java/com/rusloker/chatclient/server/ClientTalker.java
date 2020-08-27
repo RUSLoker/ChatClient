@@ -2,6 +2,10 @@ package com.rusloker.chatclient.server;
 
 import android.util.Log;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.rusloker.chatclient.Message;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -18,8 +22,10 @@ public class ClientTalker {
     private BufferedReader in;
     private BufferedWriter out;
     private String nickname;
+    static Gson gson;
 
     public ClientTalker(Socket socket) {
+        gson = new GsonBuilder().create();
         this.socket = socket;
         try {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -28,8 +34,9 @@ public class ClientTalker {
             return;
         }
         try {
-            out.write("Write your nickname:\n");
-            out.flush();
+            Message nickRequest = new Message("Server", System.currentTimeMillis(),
+                    "Write your nickname");
+            writeMessage(nickRequest);
             nickname = in.readLine();
         } catch (IOException e) {
             try {
@@ -39,29 +46,22 @@ public class ClientTalker {
         }
         new Reader(in).start();
         talkers.add(this);
+
+        Message connection = new Message("Server", System.currentTimeMillis(), nickname + " connected");
         Log.i("Server", nickname + " connected");
-        messageReceived(nickname + " connected");
-        try {
-            out.write("Connected\n");
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        messageReceived(connection);
     }
 
-    void messageReceived(String msg) {
+    void messageReceived(Message msg) {
         Log.i("Server", nickname + ": " + msg);
         for (ClientTalker i : talkers) {
-            if(i == this) {
-                continue;
-            }
-            i.writeMessage(nickname + ":  " + msg);
+            i.writeMessage(msg);
         }
     }
 
-    void writeMessage(String msg) {
+    void writeMessage(Message msg) {
         try {
-            out.write(msg + "\n");
+            out.write(gson.toJson(msg) + "\n");
             out.flush();
         } catch (IOException e) {
             popClient();
@@ -75,7 +75,8 @@ public class ClientTalker {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        messageReceived(nickname + " disconnected");
+        Message disconnection = new Message(nickname, System.currentTimeMillis(), "Disconnected");
+        messageReceived(disconnection);
         Log.i("Server", nickname + " disconnected");
     }
 
@@ -94,7 +95,11 @@ public class ClientTalker {
                     if (msg == null) {
                         break;
                     }
-                    ClientTalker.this.messageReceived(msg);
+                    ClientTalker.this.messageReceived(new Message(
+                            nickname,
+                            System.currentTimeMillis(),
+                            msg
+                    ));
                 } catch (Exception e) {
                     break;
                 }
