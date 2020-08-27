@@ -14,6 +14,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.util.LinkedList;
@@ -22,10 +23,9 @@ import java.util.Stack;
 
 public class ChatActivity extends AppCompatActivity {
     private Socket clientSocket; //сокет для общения
-    private BufferedReader in; // поток чтения из сокета
+    private ObjectInputStream in; // поток чтения из сокета
     private BufferedWriter out; // поток записи в сокет
     public static List<Message> messages = new LinkedList<>();
-    Gson gson = new GsonBuilder().create();
     MessageAdapter messageAdapter;
 
     @Override
@@ -39,28 +39,29 @@ public class ChatActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     try {
-                        clientSocket = new Socket(ChatService.host, ChatService.port);
+                        clientSocket = new Socket(ChatService.host, ChatService.port);// этой строкой мы запрашиваем
+                        //  у сервера доступ на соединение
+
+                        // читать соообщения с сервера
+                        in = new ObjectInputStream(clientSocket.getInputStream());
+                        // писать туда же
+                        out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
             };
-            creating.start();// этой строкой мы запрашиваем
-            //  у сервера доступ на соединение
-            // читать соообщения с сервера
+            creating.start();
             creating.join();
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            // писать туда же
-            out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
             new Thread() {
                 @Override
                 public void run() {
                     while (!clientSocket.isClosed() && clientSocket.isConnected()) {
                         try {
-                            String stringMessage = in.readLine();
-                            Log.i("Client", stringMessage);
-                            Message message = gson.fromJson(stringMessage, Message.class);
+                            Message message = (Message) in.readObject();
+                            Log.i("Client", message.toString());
                             messages.add(message);
                             runOnUiThread(() -> {
                                 messageAdapter.notifyDataSetChanged();
@@ -68,6 +69,8 @@ public class ChatActivity extends AppCompatActivity {
                             });
                         } catch (IOException e) {
                             Log.e("Client", e.toString());
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -94,7 +97,7 @@ public class ChatActivity extends AppCompatActivity {
                     }
                 }
             });
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
             Log.e("Client", e.toString());
             finish();
         }

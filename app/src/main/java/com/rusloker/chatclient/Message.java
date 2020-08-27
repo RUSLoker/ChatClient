@@ -1,5 +1,7 @@
 package com.rusloker.chatclient;
 
+import androidx.annotation.NonNull;
+
 import java.io.Serializable;
 import java.util.Date;
 
@@ -16,5 +18,11 @@ public class Message implements Serializable {
 
     public Date getLocalizedDate() {
         return new Date(date);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return author + " " + getLocalizedDate() + " " + content;
     }
 }
